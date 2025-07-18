@@ -1,7 +1,7 @@
 # _Immu-multi-device_
 
 <p align="center">
-  <a href="https://github.com/immumdbot/IMMU-MD">
+  <a href="https://github.com/immumdbot/IMMU-MDv2">
     <img alt="IMMU-MD docs" height="200" src="https://i.ibb.co/XM2ZzFY/IMG-20250622-WA0006.jpg">
   </a>
 </p>
@@ -19,10 +19,10 @@
 
 ## Deploy to Heroku ↓
 
-<a href="https://github.com/immumdbot/IMMU-MD/fork" target="blank"><img align="center" src="https://i.imgur.com/cxaSEWe.png" alt="Deploy bot" height="112" width="310" /></a>
+<a href="https://github.com/immumdbot/IMMU-MDv2/fork" target="blank"><img align="center" src="https://i.imgur.com/cxaSEWe.png" alt="Deploy bot" height="112" width="310" /></a>
   <div>
 <br>
-<a href="https://dashboard.heroku.com/new?template=https://github.com/immumdbot/IMMU-MD" target="blank"><img align="center" src="https://i.imgur.com/6rs61MY.png" alt="Deploy bot" height="112" width="310" /></a>
+<a href="https://dashboard.heroku.com/new?template=https://github.com/immumdbot/IMMU-MDv2" target="blank"><img align="center" src="https://i.imgur.com/6rs61MY.png" alt="Deploy bot" height="112" width="310" /></a>
   <div>
 <br>
 
