@@ -3,6 +3,12 @@ const fs = require('fs')
 // Optional: Load .env if available
 if (fs.existsSync('.env')) require('dotenv').config({ path: __dirname + '/.env' })
 
+// Helper to convert string to boolean (true only if 'true', case-insensitive)
+const toBool = (value, defaultValue = false) => {
+  if (typeof value === 'undefined') return defaultValue
+  return value.toString().toLowerCase() === 'true'
+}
+
 // Global bot settings
 global.SESSION_ID = process.env.SESSION_ID || ''
 global.PREFIX = process.env.PREFIXZ || '.'
@@ -11,18 +17,18 @@ global.botname = process.env.BOT_NAME || 'IMMU MD'
 global.ownernumber = process.env.OWNER_NUMBER || '919142294671'
 global.antidelete = process.env.ANTIDELETE || 'private'
 global.statusemoji = (process.env.STATUS_EMOJI || "🧡,💚,🔥,✨,❤️,🥰,😎").split(',')
-global.antiLinkGroups = {}; 
+global.antiLinkGroups = {}
 global.timezones = process.env.TIMEZONE || "Pakistan/Karachi"
 
-// Global runtime features with default boolean fallback
-global.autotyping = process.env.AUTO_TYPING === 'false' // boolean
-global.autorecording = process.env.AUTO_RECORDING === 'false'
-global.autoread = process.env.AUTO_READ === 'false'
-global.autoreact = process.env.AUTO_REACT === 'false'
-global.alwaysonline = process.env.ALWAYS_ONLINE === 'false'
-global.autoviewstatus = process.env.AUTO_STATUS_VIEW === 'true'
-global.autoreactstatus = process.env.AUTO_STATUS_REACT === 'true'
-global.antigroupmention = process.env.ANTI_GROUP_MENTION === 'false'
+// Boolean environment settings
+global.autotyping = toBool(process.env.AUTO_TYPING)
+global.autorecording = toBool(process.env.AUTO_RECORDING)
+global.autoread = toBool(process.env.AUTO_READ)
+global.autoreact = toBool(process.env.AUTO_REACT)
+global.alwaysonline = toBool(process.env.ALWAYS_ONLINE)
+global.autoviewstatus = toBool(process.env.AUTO_STATUS_VIEW)
+global.autoreactstatus = toBool(process.env.AUTO_STATUS_REACT)
+global.antigroupmention = toBool(process.env.ANTI_GROUP_MENTION)
 
 // Watch for changes and reload this file if updated
 let file = require.resolve(__filename)

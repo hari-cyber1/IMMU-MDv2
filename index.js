@@ -295,10 +295,40 @@ function loadStoredMessages() {
 }
 break;
 
-
      case "jid": {
-  const targetJid = m.isGroup ? m.chat : m.sender;
-  reply(`*JID:* \n\`\`\`${targetJid}\`\`\``);
+  const input = text.trim(); // user input after command
+  let resultJid;
+
+  if (!input) {
+    // No args: return current chat JID
+    resultJid = m.chat;
+  } else if (/^\d{10,15}$/.test(input)) {
+    // If input is a number: format it as JID
+    resultJid = `${input.replace(/\D/g, '')}@s.whatsapp.net`;
+  } else if (/chat\.whatsapp\.com\/([\w\d]+)/i.test(input)) {
+    // If input is a WhatsApp group invite link
+    const code = input.match(/chat\.whatsapp\.com\/([\w\d]+)/i)[1];
+    try {
+      // First try invite info (for public group)
+      const groupData = await bot.groupGetInviteInfo(code);
+      resultJid = groupData?.id;
+    } catch (e) {
+      // If groupGetInviteInfo fails, check if bot is already in the group
+      const allGroups = await bot.groupFetchAllParticipating();
+      const groupArray = Object.values(allGroups);
+      const matchedGroup = groupArray.find(g => g.inviteCode === code);
+      if (matchedGroup) {
+        resultJid = matchedGroup.id;
+      } else {
+        console.error("Group JID fetch error:", e);
+        return reply("❌ Failed to get group JID. Make sure:\n- Invite link is valid\n- Bot is not banned\n- You used a correct link.");
+      }
+    }
+  } else {
+    return reply("❌ Invalid input.\n\nUse:\n- `.jid` (get current chat JID)\n- `.jid 919876543210` (get JID from number)\n- `.jid https://chat.whatsapp.com/xxxx` (get JID from group link)");
+  }
+
+  reply(`*JID:*\n\`\`\`${resultJid}\`\`\``);
 }
 break;
 
