@@ -279,41 +279,37 @@ function loadStoredMessages() {
      switch (command) {
      
      case "antilink": {
-  if (!isCreator) return reply("Only bot owner can use this command⚠️");
-  if (!text) return reply('*Please specify on/off*\n\nExample: .antilink on');
+  if (!m.isGroup) return reply("⚠️ This command only works in groups.");
+  if (!isBotAdmin) return reply("❌ I need admin rights to manage messages.");
+  if (!isAdmin && !isCreator) return reply("⚠️ Only group admins or bot owner can use this.");
+  if (!text) return reply("*Please specify on/off*\n\n_Example: .antilink on_");
   const val = text.trim().toLowerCase();
-  if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
+  if (!["on", "off"].includes(val)) return reply("❌ Use either 'on' or 'off'.");
+  const boolVal = val === "on";
+  global.antiLinkGroups[m.chat] = boolVal;
   try {
-    global.antilink = val === "on";
-    await setHerokuEnvVar("ANTILINK", val);
-
-    await reply(`*Anti-Link updated successfully*\n\`\`\`ANTILINK = ${val.toUpperCase()}\`\`\``);
-    await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
-  } catch (error) {
-    await reply(`❌ *Failed to update Anti-Link setting:*\n${error.message}`);
+    await setHerokuEnvVar(`ANTILINK_${m.chat}`, String(boolVal));
+  } catch (err) {
+    console.error("Failed to set Heroku var for antilink:", err.message);
   }
+  await reply(`✅ *Anti-Link has been turned ${val.toUpperCase()} (${boolVal}) for this group.*`);
 }
 break;
 
      case "jid": {
-  const input = text.trim(); // user input after command
+  const input = text.trim(); 
   let resultJid;
 
   if (!input) {
-    // No args: return current chat JID
     resultJid = m.chat;
   } else if (/^\d{10,15}$/.test(input)) {
-    // If input is a number: format it as JID
     resultJid = `${input.replace(/\D/g, '')}@s.whatsapp.net`;
   } else if (/chat\.whatsapp\.com\/([\w\d]+)/i.test(input)) {
-    // If input is a WhatsApp group invite link
     const code = input.match(/chat\.whatsapp\.com\/([\w\d]+)/i)[1];
     try {
-      // First try invite info (for public group)
       const groupData = await bot.groupGetInviteInfo(code);
       resultJid = groupData?.id;
     } catch (e) {
-      // If groupGetInviteInfo fails, check if bot is already in the group
       const allGroups = await bot.groupFetchAllParticipating();
       const groupArray = Object.values(allGroups);
       const matchedGroup = groupArray.find(g => g.inviteCode === code);
@@ -568,20 +564,22 @@ https://whatsapp.com/channel/0029Vaq4PRsD38CJKXzwmb42
 }
 break;
 
-  case "autoread": {
+case "autoread": {
     if (!isCreator) return reply("Only bot owner can use this command⚠️");
     if (!text) return reply('*Please specify on/off*\n\nExample: .autoread on');
 
     const val = text.trim().toLowerCase();
     if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
+    const boolVal = val === "on" ? "true" : "false";
+
     try {
-        await setHerokuEnvVar("AUTO_READ", val.toUpperCase());
-        global.autoread = val === "on";
-        await reply(`*Auto-Read updated successfully*\n\`\`\`AUTO_READ = ${val.toUpperCase()}\`\`\``);
-        await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
+        await setHerokuEnvVar("AUTO_READ", boolVal);
+        global.autoread = boolVal === "true";
+        await reply(`✅ *Auto-Read updated successfully*\n\`\`\`AUTO_READ = ${boolVal}\`\`\``);
+        await reply(`♻️ *Bot will restart to apply the new setting. Please wait a moment...*`);
     } catch (err) {
-        await reply(`*Failed to update AUTO_READ*\n${err.message}`);
+        await reply(`❌ *Failed to update AUTO_READ*\n${err.message}`);
     }
 }
 break;
@@ -593,13 +591,15 @@ case "autotyping": {
     const val = text.trim().toLowerCase();
     if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
+    const boolVal = val === "on" ? "true" : "false";
+
     try {
-        await setHerokuEnvVar("AUTO_TYPING", val.toUpperCase());
-        global.autotyping = val === "on";
-        await reply(`*Auto-Typing updated successfully*\n\`\`\`AUTO_TYPING = ${val.toUpperCase()}\`\`\``);
-        await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
+        await setHerokuEnvVar("AUTO_TYPING", boolVal);
+        global.autotyping = boolVal === "true";
+        await reply(`✅ *Auto-Typing updated successfully*\n\`\`\`AUTO_TYPING = ${boolVal}\`\`\``);
+        await reply(`♻️ *Bot will restart to apply the new setting. Please wait a moment...*`);
     } catch (err) {
-        await reply(`*Failed to update AUTO_TYPING*\n${err.message}`);
+        await reply(`❌ *Failed to update AUTO_TYPING*\n${err.message}`);
     }
 }
 break;
@@ -611,13 +611,15 @@ case "autorecording": {
     const val = text.trim().toLowerCase();
     if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
+    const boolVal = val === "on" ? "true" : "false";
+
     try {
-        await setHerokuEnvVar("AUTO_RECORDING", val.toUpperCase());
-        global.autorecording = val === "on";
-        await reply(`*Auto-Recording updated successfully*\n\`\`\`AUTO_RECORDING = ${val.toUpperCase()}\`\`\``);
-        await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
+        await setHerokuEnvVar("AUTO_RECORDING", boolVal);
+        global.autorecording = boolVal === "true";
+        await reply(`✅ *Auto-Recording updated successfully*\n\`\`\`AUTO_RECORDING = ${boolVal}\`\`\``);
+        await reply(`♻️ *Bot will restart to apply the new setting. Please wait a moment...*`);
     } catch (err) {
-        await reply(`*Failed to update AUTO_RECORDING*\n${err.message}`);
+        await reply(`❌ *Failed to update AUTO_RECORDING*\n${err.message}`);
     }
 }
 break;
@@ -629,13 +631,15 @@ case "alwaysonline": {
     const val = text.trim().toLowerCase();
     if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
+    const boolVal = val === "on" ? "true" : "false";
+
     try {
-        await setHerokuEnvVar("ALWAYS_ONLINE", val.toUpperCase());
-        global.alwaysonline = val === "on";
-        await reply(`*Always Online updated successfully*\n\`\`\`ALWAYS_ONLINE = ${val.toUpperCase()}\`\`\``);
-        await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
+        await setHerokuEnvVar("ALWAYS_ONLINE", boolVal);
+        global.alwaysonline = boolVal === "true";
+        await reply(`✅ *Always Online updated successfully*\n\`\`\`ALWAYS_ONLINE = ${boolVal}\`\`\``);
+        await reply(`♻️ *Bot will restart to apply the new setting. Please wait a moment...*`);
     } catch (err) {
-        await reply(`*Failed to update ALWAYS_ONLINE*\n${err.message}`);
+        await reply(`❌ *Failed to update ALWAYS_ONLINE*\n${err.message}`);
     }
 }
 break;
@@ -647,13 +651,15 @@ case "autoreact": {
     const val = text.trim().toLowerCase();
     if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
+    const boolVal = val === "on" ? "true" : "false";
+
     try {
-        await setHerokuEnvVar("AUTO_REACT", val.toUpperCase());
-        global.autoreact = val === "on";
-        await reply(`*Auto-React updated successfully*\n\`\`\`AUTO_REACT = ${val.toUpperCase()}\`\`\``);
-        await reply(`*Bot will restart to apply the new setting. Please wait a moment!*`);
+        await setHerokuEnvVar("AUTO_REACT", boolVal);
+        global.autoreact = boolVal === "true";
+        await reply(`✅ *Auto-React updated successfully*\n\`\`\`AUTO_REACT = ${boolVal}\`\`\``);
+        await reply(`♻️ *Bot will restart to apply the new setting. Please wait a moment...*`);
     } catch (err) {
-        await reply(`*Failed to update AUTO_REACT*\n${err.message}`);
+        await reply(`❌ *Failed to update AUTO_REACT*\n${err.message}`);
     }
 }
 break;
@@ -705,8 +711,16 @@ case "antigroupmention": {
   const val = text.trim().toLowerCase();
   if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
-  global.antigroupmention = val === "on";
-  await reply(`*Anti-Group-Mention updated successfully*\n\`\`\`ANTI_GROUP_MENTION = ${val.toUpperCase()}\`\`\``);
+  const boolValue = val === "on";
+  global.antigroupmention = boolValue;
+
+  try {
+    await setHerokuEnv('ANTI_GROUP_MENTION', boolValue.toString());
+    await reply(`✅ *Anti-Group-Mention updated successfully!*\n\`\`\`ANTI_GROUP_MENTION = ${boolValue.toString().toUpperCase()}\`\`\``);
+  } catch (err) {
+    console.error(err);
+    await reply("❌ Failed to update Heroku env variable.");
+  }
 }
 break;
 
