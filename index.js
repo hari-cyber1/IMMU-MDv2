@@ -674,19 +674,21 @@ case "forward": {
   const linkMatch = text.trim().match(groupLinkRegex);
 
   try {
-    // If it's a group link
+    // Join group via invite link
     if (linkMatch) {
       const inviteCode = linkMatch[1];
-      const res = await bot.groupAcceptInvite(inviteCode).catch((e) => {
+      const res = await bot.groupAcceptInvite(inviteCode).catch(() => {
         throw new Error("❌ Failed to join group. Maybe already joined or link is invalid.");
       });
-      targetJid = res; // joined group JID
+      targetJid = res;
     } else {
-      // If it's a JID or number
+      // Handle number or JID
       let jid = text.trim();
       if (!jid.includes("@")) {
         if (/^\d{5,16}$/.test(jid)) {
           jid = jid + "@s.whatsapp.net";
+        } else if (/^\d{5,16}-\d+@g.us$/.test(jid)) {
+          // valid group JID
         } else {
           return reply("*Invalid number or JID.*");
         }
@@ -694,12 +696,74 @@ case "forward": {
       targetJid = jid;
     }
 
-    const quotedMsg = await m.getQuotedMessage();
-    await bot.copyNForward(targetJid, quotedMsg, true); // true = force forward
+    // If it's a group, check if open and bot is admin
+    if (targetJid.endsWith("@g.us")) {
+      const metadata = await bot.groupMetadata(targetJid).catch(() => null);
+      if (!metadata) return reply("❌ Failed to get group metadata.");
+
+      const botId = bot.user.id.split(":")[0] + "@s.whatsapp.net";
+      const botParticipant = metadata.participants.find(p => p.id === botId);
+      const isBotAdmin = botParticipant?.admin === "admin" || botParticipant?.admin === "superadmin";
+
+      if (metadata.announce === true && !isBotAdmin) {
+        return reply("❌ Cannot forward. Group is *closed* and bot is *not admin*.");
+      }
+    }
+
+    const quoted = await m.getQuotedMessage();
+
+    // Native copy forward
+    const forwarded = await bot.copyNForward(targetJid, quoted, true);
+
+if (!forwarded) {
+  return bot.sendMessage(m.chat, { text: "❌ I cant forward old messages so please try to forward new messages." }, { quoted: m });
+}
+
     await reply(`✅ Message forwarded to *${targetJid}* successfully.`);
   } catch (err) {
     console.error("Forward error:", err);
-    await reply("*❌ Failed to forward message.*\n" + err.message);
+
+    // fallback if native forward fails
+    try {
+      const quoted = await m.getQuotedMessage();
+      const msgType = quoted.mtype;
+      const msgContent = quoted.msg;
+
+      if (msgType === "conversation" || msgType === "extendedTextMessage") {
+        await bot.sendMessage(targetJid, { text: quoted.text });
+      } else if (msgType === "imageMessage") {
+        await bot.sendMessage(targetJid, {
+          image: await quoted.download(),
+          caption: msgContent?.caption || "",
+        });
+      } else if (msgType === "videoMessage") {
+        await bot.sendMessage(targetJid, {
+          video: await quoted.download(),
+          caption: msgContent?.caption || "",
+        });
+      } else if (msgType === "documentMessage") {
+        await bot.sendMessage(targetJid, {
+          document: await quoted.download(),
+          mimetype: msgContent?.mimetype,
+          fileName: msgContent?.fileName || "file",
+        });
+      } else if (msgType === "audioMessage") {
+        await bot.sendMessage(targetJid, {
+          audio: await quoted.download(),
+          mimetype: msgContent?.mimetype,
+          ptt: msgContent?.ptt || false,
+        });
+      } else if (quoted?.text) {
+        await bot.sendMessage(targetJid, { text: quoted.text });
+      } else {
+        return reply("❌ Cannot forward this type of message.");
+      }
+
+      await reply(`✅ Message forwarded to *${targetJid}* (fallback mode).`);
+    } catch (fallbackErr) {
+      console.error("Fallback forward error:", fallbackErr);
+      await reply("*❌ Failed to forward message.*\n" + fallbackErr.message);
+    }
   }
 }
 break;
@@ -1168,32 +1232,52 @@ saveStoredMessages(remoteJid, messageId, kay);
 }); 
 
     bot.copyNForward = async (jid, message, forceForward = false, options = {}) => {
-    if (!message || !message.message) return console.error("No message to forward!");
+  if (!message) return console.error("No message object provided!");
 
-    let vtype;
-    if (options.readViewOnce && message.message.viewOnceMessage) {
-        message.message = message.message.viewOnceMessage.message;
-        vtype = Object.keys(message.message)[0];
-        delete message.message?.ignore;
-        delete message.message[vtype].viewOnce;
+  // Step 1: Resolve viewOnce or ephemeral
+  let realMessage = message.message;
+  
+  if (!realMessage) {
+    // Handle cases where message is nested (like ephemeral/viewOnce)
+    if (message.msg) realMessage = message.msg.message;
+    if (!realMessage) return console.error("No message content found to forward.");
+  }
+
+  // Handle viewOnce extraction if requested
+  if (options.readViewOnce && realMessage.viewOnceMessage) {
+    realMessage = realMessage.viewOnceMessage.message;
+    const vtype = Object.keys(realMessage || {})[0];
+    if (realMessage[vtype]) {
+      delete realMessage[vtype].viewOnce;
     }
+  }
 
-    let content = await generateForwardMessageContent(message, forceForward);
-    let ctype = Object.keys(content)[0];
-    let context = message.message?.[ctype]?.contextInfo || {};
+  // Create the forward content
+  const content = await generateForwardMessageContent(
+    { ...message, message: realMessage },
+    forceForward
+  );
 
-    content[ctype].contextInfo = { ...context, ...content[ctype].contextInfo };
+  const ctype = Object.keys(content)[0];
+  const context = realMessage?.[ctype]?.contextInfo || {};
 
-    const waMessage = await generateWAMessageFromContent(jid, content, {
-        ...content[ctype],
-        ...options,
-        ...(options.contextInfo ? { contextInfo: { ...content[ctype].contextInfo, ...options.contextInfo } } : {}),
-    });
+  content[ctype].contextInfo = {
+    ...context,
+    ...content[ctype].contextInfo
+  };
 
-    await bot.relayMessage(jid, waMessage.message, { messageId: waMessage.key.id });
-    return waMessage;
- };
- 
+  // Generate WAMessage and send
+  const waMessage = await generateWAMessageFromContent(jid, content, {
+    ...content[ctype],
+    ...options,
+    ...(options.contextInfo ? { contextInfo: { ...content[ctype].contextInfo, ...options.contextInfo } } : {}),
+  });
+
+  await bot.relayMessage(jid, waMessage.message, { messageId: waMessage.key.id });
+
+  return waMessage;
+};
+
  bot.downloadAndSaveMediaMessage = async (message, filename, attachExtension = true) => {
     let quoted = message.msg ? message.msg : message;
     let mime = (message.msg || message).mimetype || '';
