@@ -776,10 +776,15 @@ case "antigroupmention": {
   if (!["on", "off"].includes(val)) return reply('*Invalid value. Please specify on or off*');
 
   const boolValue = val === "on";
-  global.antigroupmention = boolValue;
 
   try {
+    // ✅ Update global live variable
+    global.antigroupmention = boolValue;
+
+    // ✅ Save in Heroku env
     await setHerokuEnv('ANTI_GROUP_MENTION', boolValue.toString());
+
+    // ✅ Feedback to user
     await reply(`✅ *Anti-Group-Mention updated successfully!*\n\`\`\`ANTI_GROUP_MENTION = ${boolValue.toString().toUpperCase()}\`\`\``);
   } catch (err) {
     console.error(err);
