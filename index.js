@@ -840,14 +840,14 @@ break;
  }
 
         // Auto Status View
-        if (global.autoviewstatus === 'true' && m.key.remoteJid === "status@broadcast" && !m.key.fromMe) {
+        if (global.autoviewstatus && m.key.remoteJid === "status@broadcast" && !m.key.fromMe) {
             const participant = m.key.participant || m.participant;
                 await bot.readMessages([m.key]);
                 console.log(`👀 Viewed status from: ${participant.split('@')[0]}`);
         }
 
         // Status Reaction
-        if (global.autoreactstatus === 'true' && m.key.remoteJid === "status@broadcast" && !m.key.fromMe) {
+        if (global.autoreactstatus && m.key.remoteJid === "status@broadcast" && !m.key.fromMe) {
       const emojiSetting = global.statusemoji || '💚';
   const emojiArray = emojiSetting.split(',').map(e => e.trim()).filter(e => e);
      const reactionEmoji = emojiArray[Math.floor(Math.random() * emojiArray.length)];  
